@@ -13,6 +13,7 @@ ENV PATH="/home/user/.local/bin:$PATH"
 
 COPY --chown=user . .
 
+ENV PYTHONPATH=/app
 RUN python backend/training/train_classifier.py
 RUN python chatbot/train.py
 
