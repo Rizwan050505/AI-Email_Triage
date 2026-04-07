@@ -16,8 +16,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
 app.include_router(routes.router, prefix="/api")
 
+# Mount the static frontend directory for relative asset access if needed
+app.mount("/frontend", StaticFiles(directory="frontend"), name="frontend")
+
 @app.get("/")
-def root():
-    return {"message": "Welcome to AI Email Triage API"}
+def serve_frontend():
+    # Serve the beautiful email triage UI directly on the Hackathon page!
+    return FileResponse(os.path.join("frontend", "index.html"))
