@@ -1,0 +1,34 @@
+{
+    "intents": [
+        {
+            "tag": "greeting",
+            "patterns": ["Hi", "Hello", "Hey there", "Is anyone there?", "Good morning", "Good afternoon"],
+            "responses": ["Hello! I am your AI Email Assistant. How can I help you triage your inbox?", "Hi there! Need help with your emails?"]
+        },
+        {
+            "tag": "goodbye",
+            "patterns": ["Bye", "See ya", "Goodbye", "Catch you later", "That's all"],
+            "responses": ["Goodbye! Have a highly productive day.", "See you later! I'll be here if you need more email help."]
+        },
+        {
+            "tag": "summarize",
+            "patterns": ["Summarize this email", "What is this about?", "Can you give me a summary?", "TLDR of this email", "Explain this to me"],
+            "responses": ["Sure, I can summarize the content of this email for you.", "Executing summarization on the current email text..."]
+        },
+        {
+            "tag": "draft_reply",
+            "patterns": ["Draft a reply", "Reply to this", "Write an email responding to this", "Help me reply", "Generate a reply saying yes"],
+            "responses": ["I'll help you draft a response to this email right away.", "Drafting an intelligent reply for you..."]
+        },
+        {
+            "tag": "query_inbox",
+            "patterns": ["Do I have any urgent emails?", "Are there emails from my boss?", "Show high priority emails", "What should I read first?"],
+            "responses": ["Let me check your inbox for high-priority items.", "Scanning your inbox right now..."]
+        },
+        {
+            "tag": "explain_action",
+            "patterns": ["Why was this archived?", "Why did you forward this?", "Explain your decision", "Why so high priority?"],
+            "responses": ["I make decisions based on the NLP priority model and my policy engine. Let me break down this specific rule for you."]
+        }
+    ]
+}

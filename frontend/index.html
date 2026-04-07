@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Email Triage Inbox</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .email-item { cursor: pointer; transition: 0.2s; border-left: 5px solid transparent; }
+        .email-item:hover { background-color: #e9ecef; }
+        .priority-high { border-left-color: #dc3545; }
+        .priority-medium { border-left-color: #ffc107; }
+        .priority-low { border-left-color: #6c757d; }
+        .badge-forward { background-color: #0d6efd; }
+        .badge-reply { background-color: #198754; }
+        .badge-archive { background-color: #6c757d; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container">
+            <span class="navbar-brand mb-0 h1">AI Email Triage</span>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-5">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">Inbox</h5>
+                    </div>
+                    <div class="list-group list-group-flush" id="emailList" style="max-height: 80vh; overflow-y: auto;">
+                        <!-- Emails will be populated here -->
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-7">
+                <div class="card shadow-sm h-100" id="emailDetailCard" style="display: none;">
+                    <div class="card-body" id="emailDetailContent">
+                        <!-- Email details here -->
+                    </div>
+                    <div class="card-footer bg-white border-top-0" id="feedbackSection">
+                        <h6>Provide Feedback for AI</h6>
+                        <form id="feedbackForm">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-auto">
+                                    <select class="form-select" id="correctPriority">
+                                        <option value="high">High</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="low">Low</option>
+                                    </select>
+                                </div>
+                                <div class="col-auto">
+                                    <select class="form-select" id="correctAction">
+                                        <option value="forward">Forward</option>
+                                        <option value="reply">Reply</option>
+                                        <option value="archive">Archive</option>
+                                    </select>
+                                </div>
+                                <div class="col-auto">
+                                    <button type="submit" class="btn btn-primary">Submit Correction</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="text-center mt-5 text-muted" id="placeholderText">
+                    Select an email to view details
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "http://localhost:8000/api";
+        let currentEmail = null;
+
+        async function fetchEmails() {
+            try {
+                const response = await fetch(`${API_BASE}/dataset`);
+                const emails = await response.json();
+                renderEmailList(emails);
+            } catch (err) {
+                console.error("Failed to fetch emails", err);
+            }
+        }
+
+        function renderEmailList(emails) {
+            const list = document.getElementById("emailList");
+            list.innerHTML = "";
+            emails.forEach(email => {
+                const item = document.createElement("a");
+                item.className = `list-group-item list-group-item-action email-item priority-${email.predicted_priority}`;
+                item.onclick = () => showEmailDetail(email);
+                
+                item.innerHTML = `
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1 text-truncate" style="max-width: 70%;">${email.sender}</h6>
+                        <small class="text-muted">${new Date(email.timestamp).toLocaleDateString()}</small>
+                    </div>
+                    <p class="mb-1 text-truncate">${email.subject}</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small>Priority: <strong>${email.predicted_priority}</strong></small>
+                        <span class="badge badge-${email.predicted_action}">${email.predicted_action}</span>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function showEmailDetail(email) {
+            currentEmail = email;
+            document.getElementById("placeholderText").style.display = "none";
+            document.getElementById("emailDetailCard").style.display = "flex";
+            
+            document.getElementById("emailDetailContent").innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="mb-0">${email.subject}</h4>
+                    <div>
+                        <span class="badge bg-secondary p-2 me-1">Pri: ${email.predicted_priority}</span>
+                        <span class="badge bg-primary p-2">Action: ${email.predicted_action}</span>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <strong>From:</strong> ${email.sender}<br>
+                    <span class="text-muted text-sm">${new Date(email.timestamp).toLocaleString()}</span>
+                </div>
+                <hr>
+                <div class="mt-4" style="white-space: pre-wrap;">${email.body}</div>
+            `;
+            
+            // Set default selects
+            document.getElementById("correctPriority").value = email.predicted_priority;
+            document.getElementById("correctAction").value = email.predicted_action;
+        }
+
+        document.getElementById("feedbackForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            if(!currentEmail) return;
+            
+            const payload = {
+                email_id: currentEmail.id,
+                correct_priority: document.getElementById("correctPriority").value,
+                correct_action: document.getElementById("correctAction").value
+            };
+            
+            try {
+                const submitBtn = e.target.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerText;
+                
+                // Show loading state
+                submitBtn.innerText = "Submitting...";
+                submitBtn.disabled = true;
+                
+                const response = await fetch(`${API_BASE}/feedback`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                
+                if(response.ok) {
+                    // Update the UI labels dynamically to reflect the user's correction
+                    currentEmail.predicted_priority = payload.correct_priority;
+                    currentEmail.predicted_action = payload.correct_action;
+                    
+                    // Show success visually
+                    submitBtn.className = "btn btn-success";
+                    submitBtn.innerText = "Correction Updated ✔";
+                    
+                    // Refresh view
+                    showEmailDetail(currentEmail);
+                    
+                    setTimeout(() => {
+                        submitBtn.className = "btn btn-primary";
+                        submitBtn.innerText = originalText;
+                        submitBtn.disabled = false;
+                    }, 2000);
+                }
+            } catch (err) {
+                console.error("Failed to submit feedback", err);
+                alert("Failed to connect to the backend.");
+            }
+        });
+
+        // Chatbot Interface Logic
+        document.addEventListener("DOMContentLoaded", () => {
+            const chatWindow = document.getElementById("chatWindow");
+            const chatToggle = document.getElementById("chatToggle");
+            const chatInput = document.getElementById("chatInput");
+            const chatBody = document.getElementById("chatBody");
+            
+            chatToggle.onclick = () => {
+                 chatWindow.style.display = chatWindow.style.display === "none" ? "flex" : "none";
+            };
+            
+            window.sendMessage = async function() {
+                const text = chatInput.value.trim();
+                if(!text) return;
+                
+                chatBody.innerHTML += `<div class="text-end mb-2"><span class="bg-primary text-white p-2 rounded d-inline-block">${text}</span></div>`;
+                chatInput.value = "";
+                chatBody.scrollTop = chatBody.scrollHeight;
+                
+                const context = currentEmail ? {
+                    sender: currentEmail.sender,
+                    subject: currentEmail.subject,
+                    email_body: currentEmail.body
+                } : null;
+                
+                try {
+                    const response = await fetch(`${API_BASE}/chat`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ message: text, context: context })
+                    });
+                    const data = await response.json();
+                    chatBody.innerHTML += `<div class="mb-2"><span class="bg-light border p-2 rounded d-inline-block">${data.reply}</span></div>`;
+                    chatBody.scrollTop = chatBody.scrollHeight;
+                } catch (err) {
+                    console.error("Chat error", err);
+                }
+            };
+
+            // Initialize App
+            fetchEmails();
+        });
+    </script>
+
+    <!-- Floating Chat Widget UI -->
+    <button id="chatToggle" class="btn btn-dark shadow rounded-circle" style="position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; z-index: 1000;">
+        🤖
+    </button>
+    <div id="chatWindow" class="card shadow" style="display: none; position: fixed; bottom: 90px; right: 20px; width: 320px; height: 400px; z-index: 1000; flex-direction: column;">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <span>AI Assistant</span>
+            <button class="btn-close btn-close-white" onclick="document.getElementById('chatWindow').style.display='none'"></button>
+        </div>
+        <div class="card-body bg-white" id="chatBody" style="overflow-y: auto; flex-grow: 1;">
+            <div class="mb-2"><span class="bg-light border p-2 rounded d-inline-block">Hello! I am your AI Email Assistant. Ask me to query inbox or summarize the selected email.</span></div>
+        </div>
+        <div class="card-footer bg-white border-top-0 d-flex p-2">
+            <input type="text" id="chatInput" class="form-control me-2" placeholder="Type a message..." onkeypress="if(event.key==='Enter') sendMessage()">
+            <button class="btn btn-primary" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+</body>
+</html>

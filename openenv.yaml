@@ -1,0 +1,20 @@
+name: "email-triage-env"
+version: "0.1.0"
+description: "AI Email Triage System Environment for OpenEnv RL Challenge. Simulate email processing: prioritize, categorize, and draft responses to incoming emails."
+tags:
+  - email
+  - triage
+  - nlp
+  - classification
+  - real-world
+author: "OpenEnv Hackathon Participant"
+tasks:
+  - id: "email-triage-easy"
+    description: "Triage a simple set of emails by categorizing them into predefined priority classes."
+    difficulty: "easy"
+  - id: "email-triage-medium"
+    description: "Triage emails and determine both priority and the appropriate action to take (e.g., auto-reply, escalate)."
+    difficulty: "medium"
+  - id: "email-triage-hard"
+    description: "Triage emails, determine action, and draft a response for emails requiring an auto-reply using the chatbot agent."
+    difficulty: "hard"
