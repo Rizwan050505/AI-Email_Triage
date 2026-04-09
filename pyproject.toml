@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-email-triage"
+version = "0.1.0"
+description = "AI Email Triage System for OpenEnv"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "scikit-learn",
+    "pandas",
+    "numpy",
+    "sqlalchemy",
+    "pydantic",
+    "pydantic-settings",
+    "openai"
+]
