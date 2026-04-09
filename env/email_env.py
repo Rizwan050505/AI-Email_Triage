@@ -129,6 +129,11 @@ class EmailTriageEnv:
             step_reward = score
             message = "Hard task graded."
             
+        # Scale step_reward into bounded range to ensure total task score is within strictly (0, 1)
+        n_emails = len(self.emails_to_process)
+        if n_emails > 0:
+            step_reward = (step_reward * 0.98 / n_emails) + (0.01 / n_emails)
+
         self.total_reward_val += step_reward
         self.current_index += 1
         done = (self.current_index >= len(self.emails_to_process))
