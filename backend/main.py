@@ -38,8 +38,9 @@ def serve_frontend():
     return FileResponse(os.path.join("frontend", "index.html"))
 
 @app.post("/reset")
-def reset_env(req: ResetReq):
-    obs = env_simulator.reset(task_id=req.task_id)
+def reset_env(req: ResetReq | None = None):
+    task_id = req.task_id if req else "email-triage-easy"
+    obs = env_simulator.reset(task_id=task_id)
     return obs
 
 @app.get("/state")

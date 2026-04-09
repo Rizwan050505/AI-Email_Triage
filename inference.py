@@ -85,6 +85,8 @@ def run_inference(task_name: str, env_name: str):
             from env.email_env import Reward
             reward_obj = Reward(step_reward=0.0, total_reward=env.total_reward_val, message="Failure")
             done = True
+            import traceback
+            traceback.print_exc()
             err_str = str(e).replace('\n', ' ')
             success = False
             rewards.append(0.0)
