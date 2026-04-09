@@ -1,7 +1,6 @@
 __pycache__/
 *.py[cod]
 *$py.class
-env/
 venv/
 .env
 .venv
@@ -11,3 +10,6 @@ email_triage.db
 archive/emails.csv
 *.pkl
 backend/models/*.pkl
+run.bat
+test.py
+test_hf.py
