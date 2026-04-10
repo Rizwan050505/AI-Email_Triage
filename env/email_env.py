@@ -123,19 +123,20 @@ class EmailTriageEnv:
             if action_pred == "auto-reply":
                 if action.drafted_response and len(action.drafted_response) > 10:
                     score += 0.34
-            else:
+            elif true_action.lower() != "auto-reply":
                 score += 0.34 # no response needed, but got points for correct action
                 
-            step_reward = score
+            step_reward = min(1.0, max(0.0, score))
             message = "Hard task graded."
             
-        # Proper strict bounds grading mapping to (0.01, 0.99) to satisfy OpenEnv
+        # Proper strict bounds grading mapping to (0.05, 0.95) to satisfy OpenEnv
+        # and prevent precision rounding to 0.0 or 1.0
         n_emails = len(self.emails_to_process)
         if n_emails > 0:
             # Map the per-step score (0.0 to 1.0 max usually) to a fractional bounded addition
-            step_reward = (step_reward * 0.98 / n_emails) + (0.01 / n_emails)
+            step_reward = (step_reward * 0.90 / n_emails) + (0.05 / n_emails)
         else:
-            step_reward = 0.0
+            step_reward = 0.5
 
         self.total_reward_val += step_reward
         self.current_index += 1
