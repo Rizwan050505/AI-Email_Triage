@@ -51,6 +51,7 @@ class EmailTriageEnv:
     def reset(self, task_id: str = "email-triage-easy") -> Observation:
         self.current_task = task_id
         self.total_reward_val = 0.0
+        self._raw_scores = []
         
         # Select a mixed subset of emails for the episode
         random.seed(42)  # for reproducibility on tasks
@@ -87,15 +88,15 @@ class EmailTriageEnv:
         true_priority = raw_email.get("priority", "low") 
         true_action = raw_email.get("action", "ignore")
 
-        step_reward = 0.0
+        raw_score = 0.0
         message = ""
         
         if self.current_task == "email-triage-easy":
             if action.predicted_priority.lower() == true_priority.lower():
-                step_reward = 1.0
+                raw_score = 1.0
                 message = "Correct priority."
             else:
-                step_reward = 0.0
+                raw_score = 0.0
                 message = f"Incorrect priority. Expected {true_priority}."
                 
         elif self.current_task == "email-triage-medium":
@@ -111,7 +112,7 @@ class EmailTriageEnv:
             else:
                 score -= 0.1 # Penalty for hallucination
                 
-            step_reward = max(0.0, score) # Ensure non-negative bounds unless critical failure
+            raw_score = max(0.0, min(1.0, score))
             message = "Medium task graded with strict penalties."
             
         elif self.current_task == "email-triage-hard":
@@ -126,19 +127,28 @@ class EmailTriageEnv:
             elif true_action.lower() != "auto-reply":
                 score += 0.34 # no response needed, but got points for correct action
                 
-            step_reward = min(1.0, max(0.0, score))
+            raw_score = min(1.0, max(0.0, score))
             message = "Hard task graded."
-            
-        # Proper strict bounds grading mapping to (0.05, 0.95) to satisfy OpenEnv
-        # and prevent precision rounding to 0.0 or 1.0
-        n_emails = len(self.emails_to_process)
-        if n_emails > 0:
-            # Map the per-step score (0.0 to 1.0 max usually) to a fractional bounded addition
-            step_reward = (step_reward * 0.90 / n_emails) + (0.05 / n_emails)
-        else:
-            step_reward = 0.5
 
-        self.total_reward_val += step_reward
+        # ---- STRICT (0, 1) BOUNDING ----
+        # raw_score is in [0.0, 1.0]. We collect all raw scores and compute a
+        # running average, then map the average into (0.01, 0.99) so the final
+        # total_reward never touches 0 or 1.
+
+        # Store raw scores for averaging
+        if not hasattr(self, '_raw_scores'):
+            self._raw_scores = []
+        self._raw_scores.append(raw_score)
+
+        # Running average of all raw scores so far (range: [0.0, 1.0])
+        avg_raw = sum(self._raw_scores) / len(self._raw_scores)
+
+        # Map average into strict (0.01, 0.99):  result = 0.01 + avg * 0.98
+        self.total_reward_val = 0.01 + avg_raw * 0.98
+
+        # Per-step reward also strictly bounded (0.01, 0.99)
+        step_reward = 0.01 + raw_score * 0.98
+
         self.current_index += 1
         done = (self.current_index >= len(self.emails_to_process))
         
@@ -151,8 +161,8 @@ class EmailTriageEnv:
         }
         
         if done:
-            # Explicitly set the task score in info block as well, strictly bounded
-            info["score"] = max(0.01, min(0.99, self.total_reward_val))
+            # Final task score — strictly bounded between 0 and 1 (exclusive)
+            info["score"] = self.total_reward_val  # already in (0.01, 0.99)
             
         return obs, reward, done, info
 
