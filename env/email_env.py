@@ -129,10 +129,13 @@ class EmailTriageEnv:
             step_reward = score
             message = "Hard task graded."
             
-        # User requested to just set it to 0.5
+        # Proper strict bounds grading mapping to (0.01, 0.99) to satisfy OpenEnv
         n_emails = len(self.emails_to_process)
         if n_emails > 0:
-            step_reward = 0.5 / n_emails
+            # Map the per-step score (0.0 to 1.0 max usually) to a fractional bounded addition
+            step_reward = (step_reward * 0.98 / n_emails) + (0.01 / n_emails)
+        else:
+            step_reward = 0.0
 
         self.total_reward_val += step_reward
         self.current_index += 1
@@ -146,6 +149,10 @@ class EmailTriageEnv:
             "true_action": true_action
         }
         
+        if done:
+            # Explicitly set the task score in info block as well, strictly bounded
+            info["score"] = max(0.01, min(0.99, self.total_reward_val))
+            
         return obs, reward, done, info
 
     def close(self):
